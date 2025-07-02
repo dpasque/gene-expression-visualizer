@@ -4,8 +4,10 @@ import { createRoutes } from "./routes.ts";
 import { PostgresDataAccessClient } from "./db/postgres-data-access-client.ts";
 import dbConfig from "./knexfile.ts";
 import { APP_CONFIG } from "./config.ts";
+import cors from "cors";
 
 const app = express();
+app.use(cors());
 
 // Create hard dependencies of current instance for dependency injection below
 const dataAccessClient = new PostgresDataAccessClient(

@@ -3,8 +3,8 @@ import type { Knex } from "knex";
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("genes", (table) => {
     table.increments("id").primary();
-    table.string("symbol").notNullable().unique();
-    table.string("ensembl_id").notNullable().unique();
+    table.string("symbol").notNullable().unique().index();
+    table.string("ensembl_id").index();
     table.string("name");
     table
       .timestamp("created_at")

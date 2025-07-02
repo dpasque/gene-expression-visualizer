@@ -65,6 +65,23 @@ async function readTsvFile(filePath: string) {
   return await fs.readFile(filePath, "utf-8");
 }
 
+interface GeneMapRow {
+  symbol: string;
+  ensembl_gene_id: string;
+  name: string;
+}
+
+interface MetaRow {
+  Braincode: string;
+  AgeDays: string;
+  sex: string;
+}
+
+interface CpmRow {
+  gene: string;
+  [sampleCode: string]: string;
+}
+
 async function parseAndLoadBrainvarData({
   geneMapTsv,
   cpmTsv,
@@ -76,34 +93,122 @@ async function parseAndLoadBrainvarData({
   metaTsv: string;
   datasetId: string;
 }) {
-  const geneMapRows = parseTsv(geneMapTsv);
-  const metaRows = parseTsv(metaTsv);
+  const geneMapRows: GeneMapRow[] = parseTsv(geneMapTsv);
+  const metaRows: MetaRow[] = parseTsv(metaTsv);
   if (!cpmTsv.startsWith("gene\t")) {
     // csv-parse doesn't handle headless index columns like pandas, so we need to prepend
     cpmTsv = "gene\t" + cpmTsv;
   }
-  const cpmRows = parseTsv(cpmTsv);
-  for (const row of cpmRows) {
-    // Strip down to just Ensembl ID if symbol is present.
-    row.gene = row.gene.split("|")[0];
+  const cpmRows: CpmRow[] = parseTsv(cpmTsv);
+  // for (const row of cpmRows) {
+  //   // Strip down to just Ensembl ID if symbol is present.
+  //   row.gene = row.gene.split("|")[0];
+  // }
+
+  const geneInsertRows = geneMapRows.map((row) => ({
+    symbol: row.symbol.toUpperCase(),
+    ensembl_id:
+      row.ensembl_gene_id && row.ensembl_gene_id !== "."
+        ? row.ensembl_gene_id
+        : null,
+    name: row.name,
+  }));
+
+  const DB_BATCH_SIZE = 500;
+
+  for (let i = 0; i < geneInsertRows.length; i += DB_BATCH_SIZE) {
+    const batch = geneInsertRows.slice(i, i + DB_BATCH_SIZE);
+    await db("genes").insert(batch).onConflict("symbol").merge();
   }
 
-  const geneDbIdByEnsembleId: { [key: string]: string } = {};
-  for (const gene of geneMapRows) {
-    const [id] = await db("genes")
-      .insert({
-        symbol: gene.symbol,
-        ensembl_id: gene.ensembl_gene_id,
-        name: gene.name,
-      })
-      .onConflict(["ensembl_id"])
-      .merge()
-      .returning("id");
-    geneDbIdByEnsembleId[gene.ensembl_gene_id] = id;
+  const allGenes = await db("genes").select("id", "symbol");
+  const geneDbIdBySymbol: { [key: string]: string } = {};
+  for (const gene of allGenes) {
+    geneDbIdBySymbol[gene.symbol] = gene.id;
+  }
+
+  const metaInsertRows = metaRows.map((row) => ({
+    sample_code: row.Braincode,
+    dataset_id: datasetId,
+    age_days: parseInt(row.AgeDays),
+    sex: row.sex,
+  }));
+  for (let i = 0; i < metaRows.length; i += DB_BATCH_SIZE) {
+    const batch = metaInsertRows.slice(i, i + DB_BATCH_SIZE);
+    await db("samples").insert(batch).onConflict("sample_code").merge();
+  }
+
+  const allSamples = await db("samples").select("id", "sample_code");
+  const sampleDbIdByCode: { [key: string]: string } = {};
+  for (const sample of allSamples) {
+    sampleDbIdByCode[sample.sample_code] = sample.id;
+  }
+
+  const cpmInsertRows = [];
+  const geneMissingSymbol: string[] = [];
+  const genesNotInDb: string[] = [];
+  const samplesNotInDb: string[] = [];
+  for (const row of cpmRows) {
+    const geneSymbol = row.gene.split("|")[1]?.toUpperCase();
+    if (!geneSymbol) {
+      geneMissingSymbol.push(row.gene);
+      continue;
+    }
+
+    const geneDbId = geneDbIdBySymbol[geneSymbol];
+    if (!geneDbId) {
+      genesNotInDb.push(row.gene);
+      continue;
+    }
+
+    const allSampleEntriesForGene = Object.entries(row).filter(
+      ([key]) => key !== "gene"
+    );
+
+    for (const [sampleCode, cmpValue] of allSampleEntriesForGene) {
+      const sampleDbId = sampleDbIdByCode[sampleCode];
+      if (!sampleDbId) {
+        samplesNotInDb.push(sampleCode);
+        continue;
+      }
+
+      cpmInsertRows.push({
+        gene_id: geneDbId,
+        sample_id: sampleDbId,
+        cpm: parseFloat(cmpValue),
+      });
+    }
+  }
+
+  if (geneMissingSymbol.length > 0) {
+    console.warn(
+      `${geneMissingSymbol.length} genes were missing symbols and were skipped:`,
+      geneMissingSymbol
+    );
+  }
+  if (genesNotInDb.length > 0) {
+    console.warn(
+      `${genesNotInDb.length} genes were not found in DB and were skipped:`,
+      genesNotInDb
+    );
+  }
+  if (samplesNotInDb.length > 0) {
+    console.warn(
+      `${samplesNotInDb.length} samples were not found in DB and were skipped:`,
+      samplesNotInDb
+    );
+  }
+
+  for (let i = 0; i < cpmInsertRows.length; i += DB_BATCH_SIZE) {
+    const batch = cpmInsertRows.slice(i, i + DB_BATCH_SIZE);
+    await db("gene_expressions")
+      .insert(batch)
+      .onConflict(["gene_id", "sample_id"])
+      .merge();
   }
 }
 
-async function main() {
+async function run() {
   const geneMapTsv = await readGzippedTsvFile(GENE_MAP_FILE);
   const cpmTsv = await readTsvFile(CPM_FILE);
   const metaTsv = await readTsvFile(META_FILE);
@@ -116,4 +221,4 @@ async function main() {
   });
 }
 
-await main();
+await run();

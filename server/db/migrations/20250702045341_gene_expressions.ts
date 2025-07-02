@@ -26,6 +26,7 @@ export async function up(knex: Knex): Promise<void> {
       .defaultTo(knex.fn.now())
       .index();
     table.timestamp("deleted_at");
+    table.unique(["gene_id", "sample_id"]);
   });
   // A partial index for non-deleted filtering
   await knex.raw(

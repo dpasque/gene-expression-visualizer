@@ -1,14 +1,47 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ScatterChart,
+  Scatter,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import type { DevelopmentMilestone, GeneExpressionDatum } from "../../shared";
 
 export function ExpressionVisualizer() {
   const [geneSymbol, setGeneSymbol] = useState("");
-  const [expressionData, setExpressionData] = useState([]);
-  const [requestInProgress, setRequestInProgress] = useState(false);
+  const [expressionData, setExpressionData] = useState<GeneExpressionDatum[]>(
+    []
+  );
+  const [dataRequestInProgress, setDataRequestInProgress] = useState(false);
+
+  const [developmentalMilestones, setDevelopmentalMilestones] = useState<
+    DevelopmentMilestone[]
+  >([]);
+  const [milestoneRequestInProgress, setMilestoneRequestInProgress] =
+    useState(false);
+
+  useEffect(() => {
+    async function loadDevelopmentalMilestones() {
+      setMilestoneRequestInProgress(true);
+      const response = await fetch(
+        "http://localhost:3000/api/v1/developmental-milestones"
+      );
+      const data = await response.json();
+      setDevelopmentalMilestones(data);
+      setMilestoneRequestInProgress(false);
+    }
+
+    loadDevelopmentalMilestones();
+  }, []);
+
   const handleLoadExpressionData = async () => {
     if (!geneSymbol) {
       return;
     }
-    setRequestInProgress(true);
+    setDataRequestInProgress(true);
     const queryParams = new URLSearchParams({ symbol: geneSymbol });
 
     const response = await fetch(
@@ -16,8 +49,23 @@ export function ExpressionVisualizer() {
     );
     const data = await response.json();
     setExpressionData(data);
-    setRequestInProgress(false);
+    setDataRequestInProgress(false);
   };
+
+  const logTransformedData = useMemo(() => {
+    // Add a small number (epsilon) to avoid log(0)
+    return expressionData.map((d) => ({
+      agePostConceptionDays: Math.log2(
+        (d as any).agePostConceptionDays + Number.EPSILON
+      ),
+      cpm: Math.log2((d as any).cpm + Number.EPSILON),
+    }));
+  }, [expressionData]);
+
+  if (developmentalMilestones.length === 0 && milestoneRequestInProgress) {
+    return <div>Loading developmental milestones...</div>;
+  }
+
   return (
     <section>
       <div className="max-w-2xl mx-auto">
@@ -50,7 +98,33 @@ export function ExpressionVisualizer() {
           </div>
         </form>
       </div>
-      <pre>{JSON.stringify(expressionData, null, 2)}</pre>
+      <div>
+        {!dataRequestInProgress && logTransformedData.length > 0 && (
+          <ResponsiveContainer width="100%" height={400}>
+            <ScatterChart>
+              <CartesianGrid />
+              <XAxis
+                dataKey="agePostConceptionDays"
+                name="Developmental stage (log2-scaled)"
+                type="number"
+                domain={["dataMin - 0.5", "dataMax + 0.5"]}
+              />
+              <YAxis
+                dataKey="cpm"
+                name="Gene expression (log2(cpm))"
+                type="number"
+                domain={["dataMin - 0.5", "dataMax + 0.5"]}
+              />
+              <Tooltip cursor={{ strokeDasharray: "3 3" }} />
+              <Scatter
+                name="Expression"
+                data={logTransformedData}
+                fill="#C41E3A"
+              />
+            </ScatterChart>
+          </ResponsiveContainer>
+        )}
+      </div>
     </section>
   );
 }

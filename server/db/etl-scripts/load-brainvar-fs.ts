@@ -77,14 +77,30 @@ async function parseAndLoadBrainvarData({
   datasetId: string;
 }) {
   const geneMapRows = parseTsv(geneMapTsv);
+  const metaRows = parseTsv(metaTsv);
   if (!cpmTsv.startsWith("gene\t")) {
     // csv-parse doesn't handle headless index columns like pandas, so we need to prepend
     cpmTsv = "gene\t" + cpmTsv;
   }
   const cpmRows = parseTsv(cpmTsv);
-  const metaRows = parseTsv(metaTsv);
+  for (const row of cpmRows) {
+    // Strip down to just Ensembl ID if symbol is present.
+    row.gene = row.gene.split("|")[0];
+  }
 
-  // @TODO:ENHANCE -- Explore more data validation and edge cases in BrainVar data.
+  const geneDbIdByEnsembleId: { [key: string]: string } = {};
+  for (const gene of geneMapRows) {
+    const [id] = await db("genes")
+      .insert({
+        symbol: gene.symbol,
+        ensembl_id: gene.ensembl_gene_id,
+        name: gene.name,
+      })
+      .onConflict(["ensembl_id"])
+      .merge()
+      .returning("id");
+    geneDbIdByEnsembleId[gene.ensembl_gene_id] = id;
+  }
 }
 
 async function main() {

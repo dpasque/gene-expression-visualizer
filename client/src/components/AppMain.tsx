@@ -3,6 +3,7 @@ import type { DevelopmentMilestone, GeneDefinition } from "../../../shared";
 import { ExpressionVisualizer } from "./ExpressionVisualizer";
 import { useApi } from "../api/ApiContext";
 import { LoadingSpinner } from "./LoadingSpinner";
+import { RequestError } from "./RequestError";
 
 export function AppMain() {
   const [staticData, setStaticData] = useState<{
@@ -46,10 +47,15 @@ export function AppMain() {
 
   return (
     <main className="border-x border-gray-200 max-w-5xl mx-auto min-h-75 px-8 pt-6 pb-12">
-      {staticDataLoading && <LoadingSpinner />}
+      {staticDataLoading && (
+        <div className="flex flex-col items-center gap-y-4" role="status">
+          <LoadingSpinner />
+          <p className="text-gray-500">Loading configuration data...</p>
+        </div>
+      )}
 
       {!staticDataLoading && staticDataError && (
-        <div className="text-red-600">{staticDataError}</div>
+        <RequestError message={staticDataError} />
       )}
 
       {!staticDataLoading && !staticDataError && (

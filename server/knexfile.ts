@@ -9,6 +9,9 @@ const config: { [key: string]: Knex.Config } = {
       directory: "./db/migrations",
       tableName: "knex_migrations",
     },
+    seeds: {
+      directory: "./db/seeds",
+    },
   },
 };
 

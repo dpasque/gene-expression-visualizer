@@ -5,13 +5,19 @@
   "license": "MIT",
   "author": "Dan Speckhard-Pasque",
   "main": "index.ts",
+  "type": "module",
   "scripts": {},
   "dependencies": {
     "@types/express": "^5.0.3",
     "@types/node": "^24.0.10",
     "express": "^5.1.0",
+    "knex": "^3.1.0",
     "nodemon": "^3.1.10",
+    "pg": "^8.16.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "dotenv": "^17.0.1"
   }
 }

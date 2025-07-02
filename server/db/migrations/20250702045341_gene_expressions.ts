@@ -9,18 +9,28 @@ export async function up(knex: Knex): Promise<void> {
       .notNullable()
       .references("id")
       .inTable("genes")
-      .onDelete("CASCADE");
+      .onDelete("CASCADE")
+      .index();
     table
       .integer("sample_id")
       .unsigned()
       .notNullable()
       .references("id")
       .inTable("samples")
-      .onDelete("CASCADE");
-    table.float("cpm").notNullable();
-    table.timestamp("created_at").notNullable().defaultTo(knex.fn.now());
+      .onDelete("CASCADE")
+      .index();
+    table.float("cpm").notNullable().index();
+    table
+      .timestamp("created_at")
+      .notNullable()
+      .defaultTo(knex.fn.now())
+      .index();
     table.timestamp("deleted_at");
   });
+  // A partial index for non-deleted filtering
+  await knex.raw(
+    "CREATE INDEX idx_gene_expressions_not_deleted ON gene_expressions (id) WHERE deleted_at IS NULL"
+  );
 }
 
 export async function down(knex: Knex): Promise<void> {

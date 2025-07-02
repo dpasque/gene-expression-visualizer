@@ -1,4 +1,4 @@
-import { knex, type Knex } from "knex";
+import knex, { type Knex } from "knex";
 import type {
   DataAccessClient,
   DevelopmentMilestone,

@@ -1,7 +1,11 @@
 import { Router } from "express";
 import type { DataAccessClient } from "./db/data-access-client.js";
 
-export function createRoutes(dataAccessClient: DataAccessClient) {
+export function createRoutes({
+  dataAccessClient,
+}: {
+  dataAccessClient: DataAccessClient;
+}) {
   const router = Router();
 
   const serverErrorResponse = {
@@ -23,15 +27,17 @@ export function createRoutes(dataAccessClient: DataAccessClient) {
       );
       res.status(200).json(data);
     } catch (err) {
+      console.error(err);
       res.status(500).json(serverErrorResponse);
     }
   });
 
-  router.get("/gene-definitions", async (req, res) => {
+  router.get("/gene-definitions", async (_req, res) => {
     try {
       const data = await dataAccessClient.getAllGeneDefinitions();
       res.status(200).json(data);
     } catch (err) {
+      console.error(err);
       res.status(500).json(serverErrorResponse);
     }
   });
@@ -41,6 +47,7 @@ export function createRoutes(dataAccessClient: DataAccessClient) {
       const data = await dataAccessClient.getAllDevelopmentMilestones();
       res.status(200).json(data);
     } catch (err) {
+      console.error(err);
       res.status(500).json(serverErrorResponse);
     }
   });

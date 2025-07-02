@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-
+import { APP_CONFIG } from "../../config.ts";
 import fs from "fs/promises";
 import zlib from "zlib";
 import process from "process";
@@ -56,7 +56,7 @@ async function run() {
   const META_FILE = argv["meta"];
   const DATASET_ID = argv["dataset-id"];
 
-  const db = knex(dbConfig[process.env.NODE_ENV || "development"]);
+  const db = knex(dbConfig[APP_CONFIG.NODE_ENV]);
 
   try {
     const geneMapTsv = await readGzippedTsvFile(GENE_MAP_FILE);

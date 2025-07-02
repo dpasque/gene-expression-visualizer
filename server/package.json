@@ -6,7 +6,14 @@
   "author": "Dan Speckhard-Pasque",
   "main": "index.ts",
   "type": "module",
-  "scripts": {},
+  "scripts": {
+    "start": "node index.ts",
+    "start:dev": "nodemon --watch './**/*.ts' --exec 'node index.ts'",
+    "migrate:dev": "npx knex migrate:latest --env development",
+    "migrate-rollback:dev": "knex migrate:rollback --env development",
+    "seed:dev": "knex seed:run --env development",
+    "brainvar-etl": "node ./db/etl-scripts/load-brainvar-fs.ts --gene-map ~/gene_to_gene_human.txt.gz --cpm ~/brainVar.CPM-10042019.tsv --meta ~/brainvar_meta_data.txt"
+  },
   "dependencies": {
     "@types/express": "^5.0.3",
     "@types/node": "^24.0.10",

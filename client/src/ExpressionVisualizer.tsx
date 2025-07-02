@@ -52,7 +52,8 @@ export function ExpressionVisualizer() {
     setDataRequestInProgress(false);
   };
 
-  const logTransformedData = useMemo(() => {
+  const transformedData = useMemo(() => {
+    // Log transform to improve visualization
     // Add a small number (epsilon) to avoid log(0)
     return expressionData.map((d) => ({
       agePostConceptionDays: Math.log2(
@@ -61,6 +62,32 @@ export function ExpressionVisualizer() {
       cpm: Math.log2((d as any).cpm + Number.EPSILON),
     }));
   }, [expressionData]);
+
+  const xMilestoneTicks = useMemo(
+    // We use the milestones for the x-axis ticks
+    // Needs the same log2 treatment as the data
+    () =>
+      developmentalMilestones.map((m) => ({
+        value: Math.log2(m.postConceptionDays + Number.EPSILON),
+        label: m.label,
+      })),
+    [developmentalMilestones]
+  );
+
+  const yTicks = useMemo(() => {
+    if (transformedData.length === 0) {
+      return [];
+    }
+    const values = transformedData.map((d) => d.cpm);
+    const min = Math.ceil(Math.min(...values));
+    const max = Math.ceil(Math.max(...values));
+    const interval = 1;
+    const ticks = [];
+    for (let v = min; v <= max; v += interval) {
+      ticks.push(Number(v.toFixed(2)));
+    }
+    return ticks;
+  }, [transformedData]);
 
   if (developmentalMilestones.length === 0 && milestoneRequestInProgress) {
     return <div>Loading developmental milestones...</div>;
@@ -99,7 +126,7 @@ export function ExpressionVisualizer() {
         </form>
       </div>
       <div>
-        {!dataRequestInProgress && logTransformedData.length > 0 && (
+        {!dataRequestInProgress && transformedData.length > 0 && (
           <ResponsiveContainer width="100%" height={400}>
             <ScatterChart>
               <CartesianGrid />
@@ -107,18 +134,31 @@ export function ExpressionVisualizer() {
                 dataKey="agePostConceptionDays"
                 name="Developmental stage (log2-scaled)"
                 type="number"
-                domain={["dataMin - 0.5", "dataMax + 0.5"]}
+                domain={["dataMin", "dataMax"]}
+                ticks={xMilestoneTicks.map((t) => t.value)}
+                tickFormatter={(value) => {
+                  const tick = xMilestoneTicks.find(
+                    (t) => Math.abs(t.value - value) < Number.EPSILON
+                  );
+                  return tick ? tick.label : "";
+                }}
+                interval={0}
+                tickMargin={8}
+                angle={-30} // @TODO: might want to rotate for visibility
               />
               <YAxis
                 dataKey="cpm"
                 name="Gene expression (log2(cpm))"
                 type="number"
-                domain={["dataMin - 0.5", "dataMax + 0.5"]}
+                domain={["dataMin", "dataMax"]}
+                ticks={yTicks}
+                interval={0}
+                tickMargin={8}
               />
               <Tooltip cursor={{ strokeDasharray: "3 3" }} />
               <Scatter
                 name="Expression"
-                data={logTransformedData}
+                data={transformedData}
                 fill="#C41E3A"
               />
             </ScatterChart>

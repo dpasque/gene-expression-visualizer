@@ -1,0 +1,17 @@
+{
+  "name": "gene-expression-visualizer-server",
+  "version": "1.0.0",
+  "description": "TS / NodeJs server for returning gene expression data to client",
+  "license": "MIT",
+  "author": "Dan Speckhard-Pasque",
+  "main": "index.ts",
+  "scripts": {},
+  "dependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.10",
+    "express": "^5.1.0",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}

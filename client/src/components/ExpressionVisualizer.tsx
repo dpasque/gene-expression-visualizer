@@ -1,22 +1,15 @@
 import { useMemo, useState } from "react";
-import {
-  ScatterChart,
-  Scatter,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  ResponsiveContainer,
-} from "recharts";
+import { ExpressionChart } from "./ExpressionChart";
+import { LoadingSpinner } from "./LoadingSpinner";
+import { RequestError } from "./RequestError";
+// @ts-ignore -- not worth making a type declaration right now
+import * as d3 from "d3-regression";
 import type {
   DevelopmentMilestone,
   GeneDefinition,
   GeneExpressionDatum,
 } from "../../../shared";
 import { useApi } from "../api/ApiContext";
-import { LoadingSpinner } from "./LoadingSpinner";
-import { RequestError } from "./RequestError";
-// @ts-ignore -- not worth making a type declaration right now
-import * as d3 from "d3-regression";
 
 interface Props {
   geneDefinitions: GeneDefinition[];
@@ -181,53 +174,12 @@ export function ExpressionVisualizer({
           !expressionDataError &&
           requestMade &&
           transformedData.length > 0 && (
-            <ResponsiveContainer width="100%" height={400}>
-              <ScatterChart>
-                <CartesianGrid />
-                <XAxis
-                  dataKey="agePostConceptionDays"
-                  name="Developmental stage (log2-scaled)"
-                  type="number"
-                  domain={["dataMin", "dataMax"]}
-                  ticks={xMilestoneTicks.map((t) => t.value)}
-                  tickFormatter={(value) => {
-                    const tick = xMilestoneTicks.find(
-                      (t) => Math.abs(t.value - value) < Number.EPSILON
-                    );
-                    return tick ? tick.label : "";
-                  }}
-                  interval={0}
-                  tickMargin={8}
-                  angle={-30}
-                />
-                <YAxis
-                  dataKey="cpm"
-                  name="Gene expression (log2(cpm))"
-                  type="number"
-                  domain={["dataMin", "dataMax"]}
-                  ticks={yTicks}
-                  interval={0}
-                  tickMargin={8}
-                />
-                <Scatter
-                  name="Expression"
-                  data={transformedData}
-                  fill="#C41E3A"
-                />
-                {loessRegression.length > 1 && (
-                  <Scatter
-                    data={loessRegression.map(([x, y]: [number, number]) => ({
-                      agePostConceptionDays: x,
-                      cpm: y,
-                    }))}
-                    line={{ stroke: "#2563eb", strokeWidth: 3 }}
-                    name="LOESS"
-                    fill="none"
-                    legendType="none"
-                  />
-                )}
-              </ScatterChart>
-            </ResponsiveContainer>
+            <ExpressionChart
+              transformedData={transformedData}
+              xMilestoneTicks={xMilestoneTicks}
+              yTicks={yTicks}
+              loessRegression={loessRegression}
+            />
           )}
       </div>
     </section>

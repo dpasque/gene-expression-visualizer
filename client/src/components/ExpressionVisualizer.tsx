@@ -15,6 +15,8 @@ import type {
 import { useApi } from "../api/ApiContext";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { RequestError } from "./RequestError";
+// @ts-ignore -- not worth making a type declaration right now
+import * as d3 from "d3-regression";
 
 interface Props {
   geneDefinitions: GeneDefinition[];
@@ -94,6 +96,20 @@ export function ExpressionVisualizer({
       ticks.push(v);
     }
     return ticks;
+  }, [transformedData]);
+
+  const loessRegression = useMemo(() => {
+    if (transformedData.length < 2) {
+      return [];
+    }
+    // d3-regression expects [x, y] pairs
+    const points = transformedData.map((d) => [d.agePostConceptionDays, d.cpm]);
+    const generateLoess = d3
+      .regressionLoess()
+      .x((d: any[]) => d[0])
+      .y((d: any[]) => d[1])
+      .bandwidth(0.5); // adjust as needed
+    return generateLoess(points);
   }, [transformedData]);
 
   return (
@@ -198,6 +214,18 @@ export function ExpressionVisualizer({
                   data={transformedData}
                   fill="#C41E3A"
                 />
+                {loessRegression.length > 1 && (
+                  <Scatter
+                    data={loessRegression.map(([x, y]: [number, number]) => ({
+                      agePostConceptionDays: x,
+                      cpm: y,
+                    }))}
+                    line={{ stroke: "#2563eb", strokeWidth: 3 }}
+                    name="LOESS"
+                    fill="none"
+                    legendType="none"
+                  />
+                )}
               </ScatterChart>
             </ResponsiveContainer>
           )}

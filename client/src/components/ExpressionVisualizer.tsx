@@ -20,7 +20,10 @@ export function ExpressionVisualizer({
   geneDefinitions,
   developmentalMilestones,
 }: Props) {
+  const api = useApi();
+
   const [geneSymbol, setGeneSymbol] = useState("");
+  const [symbolInputError, setSymbolInputError] = useState<string | null>(null);
   const [expressionData, setExpressionData] = useState<GeneExpressionDatum[]>(
     []
   );
@@ -30,17 +33,33 @@ export function ExpressionVisualizer({
   );
   const [requestMade, setRequestMade] = useState(false);
 
-  const api = useApi();
+  const geneDefinitionsBySymbol = useMemo(() => {
+    const map: Record<string, GeneDefinition> = {};
+    geneDefinitions.forEach((gene) => {
+      map[gene.symbol] = gene;
+    });
+    return map;
+  }, [geneDefinitions]);
 
   const handleLoadExpressionData = async () => {
-    if (!geneSymbol) {
+    const geneSymbolCleaned = geneSymbol.trim().toUpperCase();
+    if (!geneSymbolCleaned) {
+      setSymbolInputError("A gene symbol is required.");
       return;
     }
+
+    if (!geneDefinitionsBySymbol[geneSymbolCleaned]) {
+      setSymbolInputError(
+        `${geneSymbolCleaned} is not a recognized gene symbol.`
+      );
+      return;
+    }
+
     try {
       setRequestMade(true);
       setExpressionDataLoading(true);
       setExpressionDataError(null);
-      const expressionData = await api.getGeneExpressionData(geneSymbol);
+      const expressionData = await api.getGeneExpressionData(geneSymbolCleaned);
       setExpressionData(expressionData);
     } catch (e) {
       const error = e as Error;
@@ -52,58 +71,6 @@ export function ExpressionVisualizer({
       setExpressionDataLoading(false);
     }
   };
-
-  const transformedData = useMemo(() => {
-    // Log transform to improve visualization
-    // Add a small number (epsilon) to avoid log(0)
-    return expressionData.map((d) => ({
-      agePostConceptionDays: Math.log2(
-        (d as any).agePostConceptionDays + Number.EPSILON
-      ),
-      cpm: Math.log2((d as any).cpm + Number.EPSILON),
-    }));
-  }, [expressionData]);
-
-  const xMilestoneTicks = useMemo(
-    // We use the milestones for the x-axis ticks
-    // Needs the same log2 treatment as the data
-    () =>
-      developmentalMilestones.map((m) => ({
-        value: Math.log2(m.postConceptionDays + Number.EPSILON),
-        label: m.label,
-      })),
-    [developmentalMilestones]
-  );
-
-  const yTicks = useMemo(() => {
-    if (transformedData.length === 0) {
-      return [];
-    }
-    const values = transformedData.map((d) => d.cpm);
-    const min = Math.ceil(Math.min(...values));
-    const max = Math.ceil(Math.max(...values));
-    const range = max - min;
-    const interval = Math.ceil(range / 6);
-    const ticks = [];
-    for (let v = min; v <= max; v += interval) {
-      ticks.push(v);
-    }
-    return ticks;
-  }, [transformedData]);
-
-  const loessRegression = useMemo(() => {
-    if (transformedData.length < 2) {
-      return [];
-    }
-    // d3-regression expects [x, y] pairs
-    const points = transformedData.map((d) => [d.agePostConceptionDays, d.cpm]);
-    const generateLoess = d3
-      .regressionLoess()
-      .x((d: any[]) => d[0])
-      .y((d: any[]) => d[1])
-      .bandwidth(0.5); // adjust as needed
-    return generateLoess(points);
-  }, [transformedData]);
 
   return (
     <section className="space-y-6">
@@ -117,20 +84,27 @@ export function ExpressionVisualizer({
         </p>
       </div>
 
-      <form className="flex flex-row items-center gap-4 flex-wrap">
-        <div className="flex flex-row gap-x-2 items-center">
-          <label htmlFor="gene-symbol">Gene symbol:</label>
-          <input
-            type="text"
-            id="gene-symbol"
-            name="gene-symbol"
-            placeholder="e.g. XIST"
-            className="border border-gray-300 rounded px-2 py-1"
-            value={geneSymbol}
-            onChange={(e) => setGeneSymbol(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-row justify-end">
+      <form className="flex flex-col items-start gap-y-2.5">
+        <div className="flex flex-row items-center gap-4 flex-wrap">
+          <div className="flex flex-row gap-x-2 items-center">
+            <label htmlFor="gene-symbol">Gene symbol:</label>
+            <input
+              type="text"
+              id="gene-symbol"
+              name="gene-symbol"
+              placeholder="e.g. XIST"
+              className={`border rounded px-2 py-1 ${
+                symbolInputError ? "border-red-600" : "border-gray-300"
+              }`}
+              value={geneSymbol}
+              onChange={(e) => {
+                setGeneSymbol(e.target.value);
+                setSymbolInputError(null);
+              }}
+              aria-invalid={!!symbolInputError}
+              aria-describedby="gene-symbol-error"
+            />
+          </div>
           <button
             className="w-fit bg-blue-900 hover:bg-blue-700 active:bg-blue-600 text-white py-2 px-4 rounded"
             type="button"
@@ -139,6 +113,12 @@ export function ExpressionVisualizer({
             See expression data
           </button>
         </div>
+
+        {symbolInputError && (
+          <span className="text-red-600" role="alert" id="gene-symbol-error">
+            {symbolInputError}
+          </span>
+        )}
       </form>
 
       <div>
@@ -161,7 +141,7 @@ export function ExpressionVisualizer({
         {!expressionDataLoading &&
           !expressionDataError &&
           requestMade &&
-          transformedData.length === 0 && (
+          expressionData.length === 0 && (
             <div
               className="bg-amber-100 border border-amber-400 text-amber-800 px-4 py-3 rounded relative"
               role="status"
@@ -173,12 +153,10 @@ export function ExpressionVisualizer({
         {!expressionDataLoading &&
           !expressionDataError &&
           requestMade &&
-          transformedData.length > 0 && (
+          expressionData.length > 0 && (
             <ExpressionChart
-              transformedData={transformedData}
-              xMilestoneTicks={xMilestoneTicks}
-              yTicks={yTicks}
-              loessRegression={loessRegression}
+              expressionData={expressionData}
+              developmentalMilestones={developmentalMilestones}
             />
           )}
       </div>

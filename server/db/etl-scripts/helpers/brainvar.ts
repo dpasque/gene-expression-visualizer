@@ -194,24 +194,28 @@ async function parseAndLoadExpressionCpmData({
     `Inserting ${cpmInsertRows.length} gene expression rows... (This may take a while)`
   );
 
-  for (let i = 0; i < cpmInsertRows.length; i += DB_BATCH_SIZE * 3) {
-    const batch1 = cpmInsertRows.slice(i, i + DB_BATCH_SIZE);
-    const batch2 = cpmInsertRows.slice(
-      i + DB_BATCH_SIZE,
-      i + DB_BATCH_SIZE * 2
-    );
-    const batch3 = cpmInsertRows.slice(
-      i + DB_BATCH_SIZE * 2,
-      i + DB_BATCH_SIZE * 3
-    );
+  const BATCH_COUNT_IN_PARALLEL = 4;
+  for (
+    let i = 0;
+    i < cpmInsertRows.length;
+    i += DB_BATCH_SIZE * BATCH_COUNT_IN_PARALLEL
+  ) {
+    const batches = [];
+    for (let b = 1; b <= BATCH_COUNT_IN_PARALLEL; b++) {
+      batches.push(
+        cpmInsertRows.slice(i + DB_BATCH_SIZE * (b - 1), i + DB_BATCH_SIZE * b)
+      );
+    }
 
     await Promise.all(
-      [batch1, batch2, batch3].map((batch) =>
-        db("gene_expressions")
-          .insert(batch1)
-          .onConflict(["gene_id", "sample_id"])
-          .ignore()
-      )
+      batches
+        .filter((batch) => batch.length > 0)
+        .map((batch) =>
+          db("gene_expressions")
+            .insert(batch)
+            .onConflict(["gene_id", "sample_id"])
+            .ignore()
+        )
     );
   }
 }

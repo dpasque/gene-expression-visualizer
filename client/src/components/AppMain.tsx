@@ -46,7 +46,7 @@ export function AppMain() {
   }, []);
 
   return (
-    <main className="border-x border-gray-200 max-w-5xl mx-auto min-h-75 px-8 pt-6 pb-12">
+    <main className="flex-1 border-x border-gray-200 max-w-5xl mx-auto min-h-75 px-4 sm:px-8 md:px-12 pt-6 pb-12">
       {staticDataLoading && (
         <div className="flex flex-col items-center gap-y-4" role="status">
           <LoadingSpinner />

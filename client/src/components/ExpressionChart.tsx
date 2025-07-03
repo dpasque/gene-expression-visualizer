@@ -83,7 +83,7 @@ export const ExpressionChart = memo(function ExpressionChart({
 
   return (
     <figure aria-describedby="expression-chart-metadata">
-      <figcaption className="text-base md:text-xl font-medium text-blue-900 mb-2 text-center">
+      <figcaption className="text-base md:text-xl font-semibold text-gray-800 mb-2 text-center">
         Expression (log2 CPM) by developmental stage (log2 days post-conception)
       </figcaption>
       <dl className="mb-4 text-gray-700" id="expression-chart-metadata">

@@ -88,7 +88,13 @@ export function ExpressionVisualizer({
         </p>
       </div>
 
-      <form className="flex flex-col items-start gap-y-2.5">
+      <form
+        className="flex flex-col items-start gap-y-2.5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleLoadExpressionData();
+        }}
+      >
         <div className="flex flex-row items-center gap-4 flex-wrap">
           <div className="flex flex-row gap-x-2 items-center">
             <label htmlFor="gene-symbol">Gene symbol:</label>
@@ -115,8 +121,7 @@ export function ExpressionVisualizer({
           </div>
           <button
             className="w-fit bg-blue-900 hover:bg-blue-700 active:bg-blue-600 text-white py-2 px-4 rounded"
-            type="button"
-            onClick={handleLoadExpressionData}
+            type="submit"
           >
             See expression data
           </button>
@@ -128,6 +133,8 @@ export function ExpressionVisualizer({
           </span>
         )}
       </form>
+
+      <div className="border-t border-gray-200" />
 
       <div>
         {expressionDataLoading && (

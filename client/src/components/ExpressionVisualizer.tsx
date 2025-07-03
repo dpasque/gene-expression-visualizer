@@ -23,6 +23,8 @@ export function ExpressionVisualizer({
   const api = useApi();
 
   const [geneSymbol, setGeneSymbol] = useState("");
+  const [selectedGeneDefinition, setSelectedGeneDefinition] =
+    useState<GeneDefinition | null>(null);
   const [symbolInputError, setSymbolInputError] = useState<string | null>(null);
   const [expressionData, setExpressionData] = useState<GeneExpressionDatum[]>(
     []
@@ -54,6 +56,8 @@ export function ExpressionVisualizer({
       );
       return;
     }
+
+    setSelectedGeneDefinition(geneDefinitionsBySymbol[geneSymbolCleaned]);
 
     try {
       setRequestMade(true);
@@ -88,6 +92,10 @@ export function ExpressionVisualizer({
         <div className="flex flex-row items-center gap-4 flex-wrap">
           <div className="flex flex-row gap-x-2 items-center">
             <label htmlFor="gene-symbol">Gene symbol:</label>
+            {/* @TODO:ENHANCE - this would be amazing as a combobox! 
+            We have all the definitions on the client. Just needs a lot of thoughtful design.
+            Ideally, would support searching on all known parts of gene definition: 
+            symbol, name, ensemble ID, etc */}
             <input
               type="text"
               id="gene-symbol"
@@ -153,10 +161,12 @@ export function ExpressionVisualizer({
         {!expressionDataLoading &&
           !expressionDataError &&
           requestMade &&
+          selectedGeneDefinition &&
           expressionData.length > 0 && (
             <ExpressionChart
               expressionData={expressionData}
               developmentalMilestones={developmentalMilestones}
+              selectedGeneDefinition={selectedGeneDefinition}
             />
           )}
       </div>

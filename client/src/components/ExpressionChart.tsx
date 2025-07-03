@@ -9,6 +9,7 @@ import {
 } from "recharts";
 import type {
   DevelopmentMilestone,
+  GeneDefinition,
   GeneExpressionDatum,
 } from "../../../shared";
 // @ts-ignore -- not worth making a type declaration right now
@@ -17,11 +18,13 @@ import * as d3 from "d3-regression";
 interface Props {
   expressionData: GeneExpressionDatum[];
   developmentalMilestones: DevelopmentMilestone[];
+  selectedGeneDefinition: GeneDefinition;
 }
 
 export const ExpressionChart = memo(function ExpressionChart({
   expressionData,
   developmentalMilestones,
+  selectedGeneDefinition,
 }: Props) {
   const transformedData = useMemo(() => {
     // Log transform to improve visualization
@@ -79,48 +82,91 @@ export const ExpressionChart = memo(function ExpressionChart({
   }, [transformedData]);
 
   return (
-    <ResponsiveContainer width="100%" height={400}>
-      <ScatterChart>
-        <CartesianGrid />
-        <XAxis
-          dataKey="agePostConceptionDays"
-          name="Developmental stage (log2-scaled)"
-          type="number"
-          domain={["dataMin", "dataMax"]}
-          ticks={xMilestoneTicks.map((t) => t.value)}
-          tickFormatter={(value) => {
-            const tick = xMilestoneTicks.find(
-              (t) => Math.abs(t.value - value) < Number.EPSILON
-            );
-            return tick ? tick.label : "";
-          }}
-          interval={0}
-          tickMargin={8}
-          angle={-30}
-        />
-        <YAxis
-          dataKey="cpm"
-          name="Gene expression (log2(cpm))"
-          type="number"
-          domain={["dataMin", "dataMax"]}
-          ticks={yTicks}
-          interval={0}
-          tickMargin={8}
-        />
-        <Scatter name="Expression" data={transformedData} fill="#C41E3A" />
-        {loessRegression.length > 1 && (
-          <Scatter
-            data={loessRegression.map(([x, y]) => ({
-              agePostConceptionDays: x,
-              cpm: y,
-            }))}
-            line={{ stroke: "#2563eb", strokeWidth: 3 }}
-            name="LOESS"
-            fill="none"
-            legendType="none"
+    <figure aria-describedby="expression-chart-metadata">
+      <figcaption className="text-base md:text-xl font-medium text-blue-900 mb-2 text-center">
+        Expression (log2 CPM) by developmental stage (log2 days post-conception)
+      </figcaption>
+      <dl className="mb-4 text-gray-700" id="expression-chart-metadata">
+        <div className="flex flex-row flex-wrap justify-center gap-x-6 gap-y-1">
+          <div className="flex flex-row gap-x-2 items-center">
+            <dt className="font-semibold">Gene symbol:</dt>
+            <dd>{selectedGeneDefinition.symbol}</dd>
+          </div>
+          <div className="flex flex-row gap-x-2 items-center">
+            <dt className="font-semibold">Ensembl ID:</dt>
+            <dd>{selectedGeneDefinition.ensemblId || "—"}</dd>
+          </div>
+          <div className="flex flex-row gap-x-2 items-center">
+            <dt className="font-semibold">Name:</dt>
+            <dd>{selectedGeneDefinition.name}</dd>
+          </div>
+        </div>
+      </dl>
+
+      <ResponsiveContainer width="100%" height={460}>
+        <ScatterChart aria-label="Gene expression scatter plot with LOESS regression">
+          <CartesianGrid />
+          <XAxis
+            dataKey="agePostConceptionDays"
+            name="Developmental stage (log2 days post-conception)"
+            type="number"
+            domain={["dataMin", "dataMax"]}
+            ticks={xMilestoneTicks.map((t) => t.value)}
+            tickFormatter={(value) => {
+              const tick = xMilestoneTicks.find(
+                (t) => Math.abs(t.value - value) < Number.EPSILON
+              );
+              return tick ? tick.label : "";
+            }}
+            interval={0}
+            tickMargin={8}
+            angle={-30}
+            height={60}
+            label={{
+              value: "Developmental stage (log2 days post-conception)",
+              position: "insideBottom",
+              offset: 5,
+              style: {
+                textAnchor: "middle",
+                fill: "#1e293b",
+                fontWeight: 500,
+              },
+            }}
           />
-        )}
-      </ScatterChart>
-    </ResponsiveContainer>
+          <YAxis
+            dataKey="cpm"
+            name="Gene expression (log2 CPM)"
+            type="number"
+            domain={["dataMin", "dataMax"]}
+            ticks={yTicks}
+            interval={0}
+            tickMargin={8}
+            label={{
+              value: "Gene expression (log2 CPM)",
+              angle: -90,
+              position: "insideLeft",
+              style: {
+                textAnchor: "middle",
+                fill: "#1e293b",
+                fontWeight: 500,
+              },
+            }}
+          />
+          <Scatter name="Expression" data={transformedData} fill="#C41E3A" />
+          {loessRegression.length > 1 && (
+            <Scatter
+              data={loessRegression.map(([x, y]) => ({
+                agePostConceptionDays: x,
+                cpm: y,
+              }))}
+              line={{ stroke: "#2563eb", strokeWidth: 3 }}
+              name="LOESS"
+              fill="none"
+              legendType="none"
+            />
+          )}
+        </ScatterChart>
+      </ResponsiveContainer>
+    </figure>
   );
 });

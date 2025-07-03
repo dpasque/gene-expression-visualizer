@@ -2,7 +2,7 @@ import type {
   DevelopmentMilestone,
   GeneDefinition,
   GeneExpressionDatum,
-} from "../../../shared";
+} from "../../../shared-types";
 
 export interface ApiClient {
   getDevelopmentalMilestones(): Promise<DevelopmentMilestone[]>;

@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import type { DevelopmentMilestone, GeneDefinition } from "../../../shared";
+import type {
+  DevelopmentMilestone,
+  GeneDefinition,
+} from "../../../shared-types";
 import { ExpressionVisualizer } from "./ExpressionVisualizer";
 import { useApi } from "../api/ApiContext";
 import { LoadingSpinner } from "./LoadingSpinner";

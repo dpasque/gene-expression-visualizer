@@ -8,7 +8,7 @@ import type {
   DevelopmentMilestone,
   GeneDefinition,
   GeneExpressionDatum,
-} from "../../../shared";
+} from "../../../shared-types";
 import { useApi } from "../api/ApiContext";
 
 interface Props {

@@ -11,7 +11,7 @@ import type {
   DevelopmentMilestone,
   GeneDefinition,
   GeneExpressionDatum,
-} from "../../../shared";
+} from "../../../shared-types";
 // @ts-ignore -- not worth making a type declaration right now
 import * as d3 from "d3-regression";
 
